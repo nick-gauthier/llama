@@ -15,7 +15,12 @@ from fairscale.nn.model_parallel.layers import (
 )
 from torch import nn
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+if torch.backends.mps.is_available():
+    device = "mps"
+elif torch.cuda.is_available():
+    device = "cuda"
+else:
+    device = "cpu"
 
 @dataclass
 class ModelArgs:
@@ -68,12 +73,15 @@ def apply_rotary_emb(
     xk: torch.Tensor,
     freqs_cis: torch.Tensor,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
+    xq = xq.to(device if device == "cuda" else "cpu")
+    xk = xk.to(device if device == "cuda" else "cpu")
     xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
     xk_ = torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
     freqs_cis = reshape_for_broadcast(freqs_cis, xq_)
+    freqs_cis = freqs_cis.to(device if device == "cuda" else "cpu")
     xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
     xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
-    return xq_out.type_as(xq), xk_out.type_as(xk)
+    return xq_out.type_as(xq).to(device), xk_out.type_as(xk).to(device)
 
 
 def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
@@ -273,18 +281,18 @@ class Transformer(nn.Module):
     def forward(self, tokens: torch.Tensor, start_pos: int):
         _bsz, seqlen = tokens.shape
         h = self.tok_embeddings(tokens)
-        self.freqs_cis = self.freqs_cis.to(h.device)
+        #self.freqs_cis = self.freqs_cis.to(h.device)
         freqs_cis = self.freqs_cis[start_pos : start_pos + seqlen]
 
         mask = None
         if seqlen > 1:
             mask = torch.full(
-                (1, 1, seqlen, seqlen), float("-inf"), device=tokens.device
+                (1, 1, seqlen, seqlen), float("-inf"), device=torch.device("cpu")
             )
             mask = torch.triu(mask, diagonal=start_pos + 1).type_as(h)
 
         for layer in self.layers:
-            h = layer(h, start_pos, freqs_cis, mask)
+            h = layer(h, start_pos, freqs_cis, (mask.to(device) if mask is not None else mask))
         h = self.norm(h)
         output = self.output(h).float()
         return output

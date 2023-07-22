@@ -3,6 +3,7 @@
 
 import json
 import os
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import sys
 import time
 from pathlib import Path
@@ -19,7 +20,12 @@ from fairscale.nn.model_parallel.initialize import (
 from llama.model import ModelArgs, Transformer
 from llama.tokenizer import Tokenizer
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+if torch.backends.mps.is_available():
+    device = "mps"
+elif torch.cuda.is_available():
+    device = "cuda"
+else:
+    device = "cpu"
 
 Role = Literal["system", "user", "assistant"]
 
@@ -100,10 +106,13 @@ class Llama:
         model_args.vocab_size = tokenizer.n_words
         if device == "cuda":
             torch.set_default_tensor_type(torch.cuda.HalfTensor)
+        elif device == "mps":
+            torch.set_default_tensor_type(torch.HalfTensor)
         else:
             torch.set_default_tensor_type(torch.BFloat16Tensor)
             #torch.set_default_tensor_type(torch.FloatTensor)
         model = Transformer(model_args)
+        model.to(device)
         model.load_state_dict(checkpoint, strict=False)
         print(f"Loaded in {time.time() - start_time:.2f} seconds")
 
@@ -137,13 +146,19 @@ class Llama:
         for k, t in enumerate(prompt_tokens):
             tokens[k, : len(t)] = torch.tensor(t, dtype=torch.long, device=device)
         if logprobs:
-            token_logprobs = torch.zeros_like(tokens, dtype=torch.float)
+            token_logprobs = torch.zeros_like(tokens, dtype=torch.float, device=device)
 
         prev_pos = 0
         eos_reached = torch.tensor([False] * bsz, device=device)
         input_text_mask = tokens != pad_id
+        token_times = []
         for cur_pos in range(min_prompt_len, total_len):
+            t = time.time()
             logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
+            token_times.append(time.time() - t)
+            token_times_wnd = token_times[-3:]
+            tokens_per_sec = len(token_times_wnd) / sum(token_times_wnd)
+            print("\rtokens generated: {:d}, tokens/sec: {:.2f}".format(len(token_times), tokens_per_sec), end="")
             if logprobs:
                 token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
                     input=logits.transpose(1, 2),
@@ -169,6 +184,7 @@ class Llama:
             prev_pos = cur_pos
             if all(eos_reached):
                 break
+        print()
 
         if logprobs:
             token_logprobs = token_logprobs.tolist()
