@@ -10,4 +10,4 @@ MacBook Pro M1 with 7B model:
 - MPS (default): ~4.3 words per second
 - CPU: ~0.67 words per second
 
-
+There is also an extra message shown during text generation that reports the number and speed at which tokens are being generated.
