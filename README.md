@@ -1,14 +1,16 @@
-# Llama 2
+# Llama 2 on CPU, and Mac M1/M2 GPU
 
-We are unlocking the power of large language models. Our latest version of Llama is now accessible to individuals, creators, researchers and businesses of all sizes so that they can experiment, innovate and scale their ideas responsibly. 
+This is a fork of https://github.com/facebookresearch/llama that runs on CPU and Mac M1/M2 GPU (mps) if available.
 
-This release includes model weights and starting code for pretrained and fine-tuned Llama language models — ranging from 7B to 70B parameters.
+Please refer to the official installation and usage instructions as they are exactly the same.
 
-This repository is intended as a minimal example to load [Llama 2](https://ai.meta.com/research/publications/llama-2-open-foundation-and-fine-tuned-chat-models/) models and run inference. For more detailed examples leveraging HuggingFace, see [llama-recipes](https://github.com/facebookresearch/llama-recipes/).
+<img width="978" alt="image" src="https://github.com/krychu/llama/assets/947457/8a7bd5c8-1d45-4835-8463-64e12486d0e9">
 
-## Download
+MacBook Pro M1 with 7B model:
+- MPS (default): ~4.3 words per second
+- CPU: ~0.67 words per second
 
-⚠️ **7/18: We're aware of people encountering a number of download issues today. Anyone still encountering issues should remove all local files, re-clone the repository, and [request a new download link](https://ai.meta.com/resources/models-and-libraries/llama-downloads/). It's critical to do all of these in case you have local corrupt files. When you receive the email, copy *only* the link text - it should begin with https://download.llamameta.net and not with https://l.facebook.com, which will give errors.**
+️ **7/18: We're aware of people encountering a number of download issues today. Anyone still encountering issues should remove all local files, re-clone the repository, and [request a new download link](https://ai.meta.com/resources/models-and-libraries/llama-downloads/). It's critical to do all of these in case you have local corrupt files. When you receive the email, copy *only* the link text - it should begin with https://download.llamameta.net and not with https://l.facebook.com, which will give errors.**
 
 
 
@@ -100,3 +102,4 @@ See the [LICENSE](LICENSE) file, as well as our accompanying [Acceptable Use Pol
 
 ## Original LLaMA
 The repo for the original llama release is in the [`llama_v1`](https://github.com/facebookresearch/llama/tree/llama_v1) branch.
+
